@@ -4,6 +4,7 @@ import com.carlos.fintrack.dto.lancamento.LancamentoRequest;
 import com.carlos.fintrack.dto.lancamento.LancamentoResponse;
 import com.carlos.fintrack.entity.Categoria;
 import com.carlos.fintrack.entity.Lancamento;
+import com.carlos.fintrack.exception.RecursoNaoEncontradoException;
 import com.carlos.fintrack.repository.CategoriaRepository;
 import com.carlos.fintrack.repository.LancamentoRepository;
 import org.springframework.stereotype.Service;
@@ -29,9 +30,7 @@ public class LancamentoService {
     }
 
     public LancamentoResponse buscarPorId(Long id) {
-        Lancamento lancamento = lancamentoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Lançamento não encontrado para o id: " + id));
-
+        Lancamento lancamento = encontrarLancamentoPorId(id);
         return toResponse(lancamento);
     }
 
@@ -53,9 +52,7 @@ public class LancamentoService {
     }
 
     public LancamentoResponse atualizar(Long id, LancamentoRequest request) {
-        Lancamento lancamento = lancamentoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Lançamento não encontrado para o id: " + id));
-
+        Lancamento lancamento = encontrarLancamentoPorId(id);
         Categoria categoria = buscarCategoriaPorId(request.getCategoriaId());
 
         lancamento.setDescricao(request.getDescricao());
@@ -71,15 +68,18 @@ public class LancamentoService {
     }
 
     public void excluir(Long id) {
-        Lancamento lancamento = lancamentoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Lançamento não encontrado para o id: " + id));
-
+        Lancamento lancamento = encontrarLancamentoPorId(id);
         lancamentoRepository.delete(lancamento);
+    }
+
+    private Lancamento encontrarLancamentoPorId(Long id) {
+        return lancamentoRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Lançamento não encontrado para o id: " + id));
     }
 
     private Categoria buscarCategoriaPorId(Long categoriaId) {
         return categoriaRepository.findById(categoriaId)
-                .orElseThrow(() -> new RuntimeException("Categoria não encontrada para o id: " + categoriaId));
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Categoria não encontrada para o id: " + categoriaId));
     }
 
     private LancamentoResponse toResponse(Lancamento lancamento) {
