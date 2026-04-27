@@ -4,9 +4,11 @@ import com.carlos.fintrack.dto.lancamento.LancamentoRequest;
 import com.carlos.fintrack.dto.lancamento.LancamentoResponse;
 import com.carlos.fintrack.entity.Categoria;
 import com.carlos.fintrack.entity.Lancamento;
+import com.carlos.fintrack.enums.TipoLancamento;
 import com.carlos.fintrack.exception.RecursoNaoEncontradoException;
 import com.carlos.fintrack.repository.CategoriaRepository;
 import com.carlos.fintrack.repository.LancamentoRepository;
+import com.carlos.fintrack.specification.LancamentoSpecification;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -22,9 +24,14 @@ public class LancamentoService {
         this.categoriaRepository = categoriaRepository;
     }
 
-    public List<LancamentoResponse> listarTodos() {
-        return lancamentoRepository.findAll()
-                .stream()
+    public List<LancamentoResponse> listarTodos(Integer mes, Integer ano, TipoLancamento tipo, Long categoriaId) {
+        boolean semFiltros = mes == null && ano == null && tipo == null && categoriaId == null;
+
+        List<Lancamento> lancamentos = semFiltros
+                ? lancamentoRepository.findAll()
+                : lancamentoRepository.findAll(LancamentoSpecification.comFiltros(mes, ano, tipo, categoriaId));
+
+        return lancamentos.stream()
                 .map(this::toResponse)
                 .toList();
     }
