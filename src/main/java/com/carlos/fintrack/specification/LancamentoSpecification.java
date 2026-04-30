@@ -19,27 +19,37 @@ public final class LancamentoSpecification {
 
     public static Specification<Lancamento> porPeriodo(Integer mes, Integer ano) {
         return (root, query, criteriaBuilder) -> {
-            if (mes == null && ano == null) {
-                return criteriaBuilder.conjunction();
+            Periodo periodo = construirPeriodo(mes, ano);
+
+            if (periodo.dataInicio() != null && periodo.dataFim() != null) {
+                return criteriaBuilder.between(root.get("dataLancamento"), periodo.dataInicio(), periodo.dataFim());
             }
 
-            if (mes != null && ano != null) {
-                LocalDate inicio = LocalDate.of(ano, mes, 1);
-                LocalDate fim = inicio.withDayOfMonth(inicio.lengthOfMonth());
-                return criteriaBuilder.between(root.get("dataLancamento"), inicio, fim);
+            if (mes != null) {
+                return criteriaBuilder.equal(
+                        criteriaBuilder.function("MONTH", Integer.class, root.get("dataLancamento")),
+                        mes
+                );
             }
 
-            if (ano != null) {
-                LocalDate inicioAno = LocalDate.of(ano, 1, 1);
-                LocalDate fimAno = LocalDate.of(ano, 12, 31);
-                return criteriaBuilder.between(root.get("dataLancamento"), inicioAno, fimAno);
-            }
-
-            return criteriaBuilder.equal(
-                    criteriaBuilder.function("MONTH", Integer.class, root.get("dataLancamento")),
-                    mes
-            );
+            return criteriaBuilder.conjunction();
         };
+    }
+
+    public static Periodo construirPeriodo(Integer mes, Integer ano) {
+        if (mes != null && ano != null) {
+            LocalDate inicio = LocalDate.of(ano, mes, 1);
+            LocalDate fim = inicio.withDayOfMonth(inicio.lengthOfMonth());
+            return new Periodo(inicio, fim);
+        }
+
+        if (ano != null) {
+            LocalDate inicioAno = LocalDate.of(ano, 1, 1);
+            LocalDate fimAno = LocalDate.of(ano, 12, 31);
+            return new Periodo(inicioAno, fimAno);
+        }
+
+        return new Periodo(null, null);
     }
 
     public static Specification<Lancamento> porTipo(TipoLancamento tipo) {
@@ -58,5 +68,8 @@ public final class LancamentoSpecification {
             }
             return criteriaBuilder.equal(root.get("categoria").get("id"), categoriaId);
         };
+    }
+
+    public record Periodo(LocalDate dataInicio, LocalDate dataFim) {
     }
 }
