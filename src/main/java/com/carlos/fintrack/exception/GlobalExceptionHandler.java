@@ -3,6 +3,7 @@ package com.carlos.fintrack.exception;
 import com.carlos.fintrack.dto.erro.ErroResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -37,6 +38,16 @@ public class GlobalExceptionHandler {
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(buildErroResponse(mensagem, HttpStatus.BAD_REQUEST, request.getRequestURI()));
+    }
+
+
+    @ExceptionHandler({IllegalArgumentException.class, BadCredentialsException.class})
+    public ResponseEntity<ErroResponse> handleAuthErrors(
+            RuntimeException ex,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(buildErroResponse(ex.getMessage(), HttpStatus.BAD_REQUEST, request.getRequestURI()));
     }
 
     private String formatFieldError(FieldError error) {
