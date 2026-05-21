@@ -11,10 +11,15 @@ public final class LancamentoSpecification {
     private LancamentoSpecification() {
     }
 
-    public static Specification<Lancamento> comFiltros(Integer mes, Integer ano, TipoLancamento tipo, Long categoriaId) {
-        return porPeriodo(mes, ano)
+    public static Specification<Lancamento> comFiltros(Long usuarioId, Integer mes, Integer ano, TipoLancamento tipo, Long categoriaId) {
+        return porUsuarioId(usuarioId)
+                .and(porPeriodo(mes, ano))
                 .and(porTipo(tipo))
                 .and(porCategoriaId(categoriaId));
+    }
+
+    public static Specification<Lancamento> porUsuarioId(Long usuarioId) {
+        return (root, query, criteriaBuilder) -> criteriaBuilder.equal(root.get("usuario").get("id"), usuarioId);
     }
 
     public static Specification<Lancamento> porPeriodo(Integer mes, Integer ano) {

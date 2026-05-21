@@ -17,20 +17,23 @@ import java.util.List;
 public class DashboardService {
 
     private final LancamentoRepository lancamentoRepository;
+    private final UsuarioAutenticadoService usuarioAutenticadoService;
 
-    public DashboardService(LancamentoRepository lancamentoRepository) {
+    public DashboardService(LancamentoRepository lancamentoRepository, UsuarioAutenticadoService usuarioAutenticadoService) {
         this.lancamentoRepository = lancamentoRepository;
+        this.usuarioAutenticadoService = usuarioAutenticadoService;
     }
 
     public ResumoResponse obterResumo(Integer mes, Integer ano) {
+        Long usuarioId = usuarioAutenticadoService.obterUsuarioLogado().getId();
         LancamentoSpecification.Periodo periodo = LancamentoSpecification.construirPeriodo(mes, ano);
 
         BigDecimal totalReceitas = lancamentoRepository
-                .somarPorTipoEPeriodo(TipoLancamento.RECEITA, periodo.dataInicio(), periodo.dataFim())
+                .somarPorTipoEPeriodo(usuarioId, TipoLancamento.RECEITA, periodo.dataInicio(), periodo.dataFim())
                 .orElse(BigDecimal.ZERO);
 
         BigDecimal totalDespesas = lancamentoRepository
-                .somarPorTipoEPeriodo(TipoLancamento.DESPESA, periodo.dataInicio(), periodo.dataFim())
+                .somarPorTipoEPeriodo(usuarioId, TipoLancamento.DESPESA, periodo.dataInicio(), periodo.dataFim())
                 .orElse(BigDecimal.ZERO);
 
         BigDecimal saldo = totalReceitas.subtract(totalDespesas);
@@ -43,9 +46,10 @@ public class DashboardService {
     }
 
     public List<CategoriaResumoResponse> obterGastosPorCategoria(Integer mes, Integer ano) {
+        Long usuarioId = usuarioAutenticadoService.obterUsuarioLogado().getId();
         LancamentoSpecification.Periodo periodo = LancamentoSpecification.construirPeriodo(mes, ano);
 
-        return lancamentoRepository.obterResumoPorCategoria(periodo.dataInicio(), periodo.dataFim())
+        return lancamentoRepository.obterResumoPorCategoria(usuarioId, periodo.dataInicio(), periodo.dataFim())
                 .stream()
                 .map(item -> CategoriaResumoResponse.builder()
                         .nomeCategoria(item.getNomeCategoria())
@@ -55,7 +59,8 @@ public class DashboardService {
     }
 
     public List<LancamentoResponse> obterUltimosLancamentos() {
-        List<Lancamento> recentes = lancamentoRepository.buscarRecentes(PageRequest.of(0, 10));
+        Long usuarioId = usuarioAutenticadoService.obterUsuarioLogado().getId();
+        List<Lancamento> recentes = lancamentoRepository.buscarRecentes(usuarioId, PageRequest.of(0, 10));
 
         return recentes.stream()
                 .map(this::toResponse)

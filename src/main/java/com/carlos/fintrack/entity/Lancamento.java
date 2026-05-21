@@ -58,6 +58,10 @@ public class Lancamento {
     @JoinColumn(name = "categoria_id", nullable = false)
     private Categoria categoria;
 
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "usuario_id", nullable = false)
+    private Usuario usuario;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime criadoEm;
 

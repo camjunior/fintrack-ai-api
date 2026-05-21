@@ -3,6 +3,7 @@ package com.carlos.fintrack.service;
 import com.carlos.fintrack.dto.categoria.CategoriaRequest;
 import com.carlos.fintrack.dto.categoria.CategoriaResponse;
 import com.carlos.fintrack.entity.Categoria;
+import com.carlos.fintrack.entity.Usuario;
 import com.carlos.fintrack.exception.RecursoNaoEncontradoException;
 import com.carlos.fintrack.repository.CategoriaRepository;
 import org.springframework.stereotype.Service;
@@ -13,27 +14,34 @@ import java.util.List;
 public class CategoriaService {
 
     private final CategoriaRepository categoriaRepository;
+    private final UsuarioAutenticadoService usuarioAutenticadoService;
 
-    public CategoriaService(CategoriaRepository categoriaRepository) {
+    public CategoriaService(CategoriaRepository categoriaRepository, UsuarioAutenticadoService usuarioAutenticadoService) {
         this.categoriaRepository = categoriaRepository;
+        this.usuarioAutenticadoService = usuarioAutenticadoService;
     }
 
     public List<CategoriaResponse> listarTodos() {
-        return categoriaRepository.findAll()
+        Long usuarioId = usuarioAutenticadoService.obterUsuarioLogado().getId();
+
+        return categoriaRepository.findByUsuarioId(usuarioId)
                 .stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     public CategoriaResponse buscarPorId(Long id) {
-        Categoria categoria = encontrarCategoriaPorId(id);
+        Categoria categoria = encontrarCategoriaDoUsuarioPorId(id);
         return toResponse(categoria);
     }
 
     public CategoriaResponse salvar(CategoriaRequest request) {
+        Usuario usuarioLogado = usuarioAutenticadoService.obterUsuarioLogado();
+
         Categoria categoria = Categoria.builder()
                 .nome(request.getNome())
                 .tipo(request.getTipo())
+                .usuario(usuarioLogado)
                 .build();
 
         Categoria salva = categoriaRepository.save(categoria);
@@ -41,7 +49,7 @@ public class CategoriaService {
     }
 
     public CategoriaResponse atualizar(Long id, CategoriaRequest request) {
-        Categoria categoria = encontrarCategoriaPorId(id);
+        Categoria categoria = encontrarCategoriaDoUsuarioPorId(id);
 
         categoria.setNome(request.getNome());
         categoria.setTipo(request.getTipo());
@@ -51,12 +59,14 @@ public class CategoriaService {
     }
 
     public void excluir(Long id) {
-        Categoria categoria = encontrarCategoriaPorId(id);
+        Categoria categoria = encontrarCategoriaDoUsuarioPorId(id);
         categoriaRepository.delete(categoria);
     }
 
-    private Categoria encontrarCategoriaPorId(Long id) {
-        return categoriaRepository.findById(id)
+    private Categoria encontrarCategoriaDoUsuarioPorId(Long id) {
+        Long usuarioId = usuarioAutenticadoService.obterUsuarioLogado().getId();
+
+        return categoriaRepository.findByIdAndUsuarioId(id, usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Categoria não encontrada para o id: " + id));
     }
 

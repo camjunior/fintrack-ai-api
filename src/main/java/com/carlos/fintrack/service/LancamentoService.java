@@ -4,6 +4,7 @@ import com.carlos.fintrack.dto.lancamento.LancamentoRequest;
 import com.carlos.fintrack.dto.lancamento.LancamentoResponse;
 import com.carlos.fintrack.entity.Categoria;
 import com.carlos.fintrack.entity.Lancamento;
+import com.carlos.fintrack.entity.Usuario;
 import com.carlos.fintrack.enums.TipoLancamento;
 import com.carlos.fintrack.exception.RecursoNaoEncontradoException;
 import com.carlos.fintrack.repository.CategoriaRepository;
@@ -18,18 +19,24 @@ public class LancamentoService {
 
     private final LancamentoRepository lancamentoRepository;
     private final CategoriaRepository categoriaRepository;
+    private final UsuarioAutenticadoService usuarioAutenticadoService;
 
-    public LancamentoService(LancamentoRepository lancamentoRepository, CategoriaRepository categoriaRepository) {
+    public LancamentoService(
+            LancamentoRepository lancamentoRepository,
+            CategoriaRepository categoriaRepository,
+            UsuarioAutenticadoService usuarioAutenticadoService
+    ) {
         this.lancamentoRepository = lancamentoRepository;
         this.categoriaRepository = categoriaRepository;
+        this.usuarioAutenticadoService = usuarioAutenticadoService;
     }
 
     public List<LancamentoResponse> listarTodos(Integer mes, Integer ano, TipoLancamento tipo, Long categoriaId) {
-        boolean semFiltros = mes == null && ano == null && tipo == null && categoriaId == null;
+        Long usuarioId = usuarioAutenticadoService.obterUsuarioLogado().getId();
 
-        List<Lancamento> lancamentos = semFiltros
-                ? lancamentoRepository.findAll()
-                : lancamentoRepository.findAll(LancamentoSpecification.comFiltros(mes, ano, tipo, categoriaId));
+        List<Lancamento> lancamentos = lancamentoRepository.findAll(
+                LancamentoSpecification.comFiltros(usuarioId, mes, ano, tipo, categoriaId)
+        );
 
         return lancamentos.stream()
                 .map(this::toResponse)
@@ -37,12 +44,13 @@ public class LancamentoService {
     }
 
     public LancamentoResponse buscarPorId(Long id) {
-        Lancamento lancamento = encontrarLancamentoPorId(id);
+        Lancamento lancamento = encontrarLancamentoDoUsuarioPorId(id);
         return toResponse(lancamento);
     }
 
     public LancamentoResponse salvar(LancamentoRequest request) {
-        Categoria categoria = buscarCategoriaPorId(request.getCategoriaId());
+        Usuario usuarioLogado = usuarioAutenticadoService.obterUsuarioLogado();
+        Categoria categoria = buscarCategoriaDoUsuarioPorId(request.getCategoriaId(), usuarioLogado.getId());
 
         Lancamento lancamento = Lancamento.builder()
                 .descricao(request.getDescricao())
@@ -52,6 +60,7 @@ public class LancamentoService {
                 .formaPagamento(request.getFormaPagamento())
                 .observacao(request.getObservacao())
                 .categoria(categoria)
+                .usuario(usuarioLogado)
                 .build();
 
         Lancamento salvo = lancamentoRepository.save(lancamento);
@@ -59,8 +68,9 @@ public class LancamentoService {
     }
 
     public LancamentoResponse atualizar(Long id, LancamentoRequest request) {
-        Lancamento lancamento = encontrarLancamentoPorId(id);
-        Categoria categoria = buscarCategoriaPorId(request.getCategoriaId());
+        Lancamento lancamento = encontrarLancamentoDoUsuarioPorId(id);
+        Long usuarioId = usuarioAutenticadoService.obterUsuarioLogado().getId();
+        Categoria categoria = buscarCategoriaDoUsuarioPorId(request.getCategoriaId(), usuarioId);
 
         lancamento.setDescricao(request.getDescricao());
         lancamento.setValor(request.getValor());
@@ -75,17 +85,19 @@ public class LancamentoService {
     }
 
     public void excluir(Long id) {
-        Lancamento lancamento = encontrarLancamentoPorId(id);
+        Lancamento lancamento = encontrarLancamentoDoUsuarioPorId(id);
         lancamentoRepository.delete(lancamento);
     }
 
-    private Lancamento encontrarLancamentoPorId(Long id) {
-        return lancamentoRepository.findById(id)
+    private Lancamento encontrarLancamentoDoUsuarioPorId(Long id) {
+        Long usuarioId = usuarioAutenticadoService.obterUsuarioLogado().getId();
+
+        return lancamentoRepository.findByIdAndUsuarioId(id, usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Lançamento não encontrado para o id: " + id));
     }
 
-    private Categoria buscarCategoriaPorId(Long categoriaId) {
-        return categoriaRepository.findById(categoriaId)
+    private Categoria buscarCategoriaDoUsuarioPorId(Long categoriaId, Long usuarioId) {
+        return categoriaRepository.findByIdAndUsuarioId(categoriaId, usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Categoria não encontrada para o id: " + categoriaId));
     }
 
